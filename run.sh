@@ -9,13 +9,12 @@ if lsmod | grep wireguard >/dev/null 2>&1; then
 	echo "Loaded Wireguard version: $(cat /sys/module/wireguard/version 2>/dev/null || echo "failed to obtain version")"
 else
 	echo "loading pre-req modules"
-	modprobe udp_tunnel ip6_udp_tunnel || true
+	modprobe udp_tunnel ip6_udp_tunnel || echo "Error: failed to load wireguard dependencies"
 
 	echo "loading wireguard"
 	modinfo "$modPath"
 	if ! insmod "$modPath"; then
 	 	dmesg | grep wireguard
-		exit $?
 	fi
 fi
 
