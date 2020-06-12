@@ -1,5 +1,5 @@
 FROM balenalib/%%BALENA_MACHINE_NAME%%-debian as build
-ENV VERSION '2.51.1+rev1'
+ENV VERSION '2.51.1+rev1 2.47.0+rev1'
 WORKDIR /usr/src/app
 
 RUN install_packages curl wget build-essential libelf-dev awscli bc flex libssl-dev python bison
