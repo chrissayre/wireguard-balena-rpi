@@ -6,15 +6,15 @@ files_url='https://files.balena-cloud.com' # URL exporting S3 XML
 s3_xml=$(curl -L -s $files_url)
 
 # From https://stackoverflow.com/a/7052168
-read_dom () {
-    local IFS=\>
-    read -rd \< ENTITY CONTENT
+read_dom() {
+	local IFS=\>
+	read -rd \< ENTITY CONTENT
 }
-s3_bucket=$(while read_dom; do if [[ $ENTITY = "Name" ]] ; then  echo "$CONTENT"; fi; done <<<"$s3_xml")
+s3_bucket=$(while read_dom; do if [[ $ENTITY == "Name" ]]; then echo "$CONTENT"; fi; done <<<"$s3_xml")
 
 # Output arguments to stderr.
 function err() {
-	echo "$@">&2
+	echo "$@" >&2
 }
 
 # Output arguments to stderr and halt with non-zero exit code.
@@ -25,7 +25,7 @@ function fatal() {
 
 # Output usage and halt.
 function usage() {
-    cat <<EOUSAGE
+	cat <<EOUSAGE
 usage: $0 [build|list] [options]
 
 commands:
@@ -55,7 +55,7 @@ function pop() {
 function get_header_paths() {
 	local dev_pat="${1:-.*}"
 	local ver_pat="${2:-.*}"
-	list_kernels=$(aws s3api list-objects --no-sign-request --bucket "$s3_bucket"  --output text  --query 'Contents[]|[?contains(Key, `kernel`)]' | cut -f2)
+	list_kernels=$(aws s3api list-objects --no-sign-request --bucket "$s3_bucket" --output text --query 'Contents[]|[?contains(Key, `kernel`)]' | cut -f2)
 
 	while read -r line; do
 		if echo "$line" | grep -e "^\(esr\-\)\?images\/" | grep -q "$dev_pat/$ver_pat"; then
@@ -63,18 +63,18 @@ function get_header_paths() {
 			version=$(echo "$line" | cut -f3 -d/)
 			echo "$line"
 		fi
-	done <<< "$list_kernels"
+	done <<<"$list_kernels"
 }
 
 # List available devices and versions.
 function list_versions() {
-	list_kernels=$(aws s3api list-objects --no-sign-request --bucket "$s3_bucket"  --output text  --query 'Contents[]|[?contains(Key, `kernel`)]|[?contains(Key,`images`)]' | cut -f2)
+	list_kernels=$(aws s3api list-objects --no-sign-request --bucket "$s3_bucket" --output text --query 'Contents[]|[?contains(Key, `kernel`)]|[?contains(Key,`images`)]' | cut -f2)
 
 	while read -r line; do
 		device=$(echo "$line" | cut -f2 -d/)
 		version=$(echo "$line" | cut -f3 -d/)
 		printf "%-30s %-30s\n" "$device" "$version"
-	done <<< "$list_kernels"
+	done <<<"$list_kernels"
 }
 
 # Retrieve kernel module headers from the specified remote path and build kernel
@@ -83,7 +83,7 @@ function list_versions() {
 function get_and_build() {
 	local path="$1"
 	local pattern="^(esr-)?images/(.*)/(.*)/"
-	[[ "$path" =~ $pattern ]] || fatal "Invalid path '$path'?!"
+	[[ $path =~ $pattern ]] || fatal "Invalid path '$path'?!"
 
 	local device="${BASH_REMATCH[2]}"
 	local version="${BASH_REMATCH[3]}"
@@ -109,7 +109,7 @@ function get_and_build() {
 	if [[ $filename == *"source"* ]]; then
 		# The kernel source tarball generated using kernel-devsrc pre-thud and post-thud have different folder layouts.
 		# Detect the layout and select strip_depth accordingly
-		test_strip=$(tar tzf $filename | head -2 | tail -1 | sed  's/[^0-9]*//g')
+		test_strip=$(tar tzf $filename | head -2 | tail -1 | sed 's/[^0-9]*//g')
 		if [ -z "$test_strip" ]; then
 			strip_depth=2
 		else
@@ -167,17 +167,17 @@ while true; do
 	flag=$1
 	shift
 	case "$flag" in
-		--device) device="$1" && shift ;;
-		--os-version) versions="$1" && shift ;;
-		--dest-dir) output_dir="$1" && shift ;;
-		--src) module_dir="$1" && shift ;;
-		--) break ;;
-		*)
-			{
-				echo "error: unknown flag: $flag"
-				usage
-			} >&2
-			exit 1
+	--device) device="$1" && shift ;;
+	--os-version) versions="$1" && shift ;;
+	--dest-dir) output_dir="$1" && shift ;;
+	--src) module_dir="$1" && shift ;;
+	--) break ;;
+	*)
+		{
+			echo "error: unknown flag: $flag"
+			usage
+		} >&2
+		exit 1
 		;;
 	esac
 done
@@ -185,26 +185,26 @@ done
 # which command
 command="$1"
 case "$command" in
-	build)
-		shift
-		;;
-	list)
-		echo "Fetching list from servers" && list_versions && exit
-		;;
-	*)
-		{
-			echo "error: unknown command: $1"
-			usage
-		} >&2
-		exit 1
-		;;
+build)
+	shift
+	;;
+list)
+	echo "Fetching list from servers" && list_versions && exit
+	;;
+*)
+	{
+		echo "error: unknown command: $1"
+		usage
+	} >&2
+	exit 1
+	;;
 esac
 
-[[ -d "$module_dir" ]] || fatal "ERROR: Cannot find module directory $module_dir"
-[[ -z "$versions" ]] && fatal "ERROR: No version specified"
+[[ -d $module_dir ]] || fatal "ERROR: Cannot find module directory $module_dir"
+[[ -z $versions ]] && fatal "ERROR: No version specified"
 
-if [[ -z "$device" ]]; then
-	if [[ -z "$BALENA_MACHINE_NAME" ]]; then
+if [[ -z $device ]]; then
+	if [[ -z $BALENA_MACHINE_NAME ]]; then
 		fatal "ERROR: No device specified"
 	else
 		err "No device specified, use default device type: $BALENA_MACHINE_NAME."
@@ -224,7 +224,6 @@ for version in $versions; do
 	done
 done
 
-if [[ -n "$didFail" ]]; then
+if [[ -n $didFail ]]; then
 	fatal "Could not find headers for '$device' at version '$failedVersions', run $0 list"
 fi
-
