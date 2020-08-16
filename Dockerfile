@@ -1,6 +1,6 @@
 FROM balenalib/raspberrypi4-64-debian as build
 ENV RPI3_VERSION '2.47.0+rev1'
-ENV RPI4_VERSION '2.51.1+rev1'
+ENV RPI4_VERSION '2.53.12+rev1'
 WORKDIR /usr/src/app
 
 RUN install_packages curl wget build-essential libelf-dev awscli bc flex libssl-dev python bison
