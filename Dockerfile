@@ -1,22 +1,30 @@
+ENV RPI4_VERSION '2.82.10+rev1'
+ENV BALENA_MACHINE_NAME 'rp4'
+
 FROM balenalib/raspberrypi4-64-debian as build
-ENV RPI3_VERSION '2.47.0+rev1'
-ENV RPI4_VERSION '2.53.12+rev1'
+RUN install_packages curl build-essential libelf-dev libssl-dev pkg-config git flex bison bc python kmod
+
 WORKDIR /usr/src/app
 
-RUN install_packages curl wget build-essential libelf-dev awscli bc flex libssl-dev python bison
+RUN git clone https://git.zx2c4.com/wireguard-linux-compat && git clone https://git.zx2c4.com/wireguard-tools
+RUN curl -L -o headers.tar.gz $(echo "https://files.balena-cloud.com/images/$BALENA_MACHINE_NAME/$VERSION/kernel_modules_headers.tar.gz" | sed -e 's/+/%2B/') && tar -xf headers.tar.gz 
 
-COPY . ./
+RUN ln -s /lib64/ld-linux-x86-64.so.2  /lib/ld-linux-x86-64.so.2 || true  
+RUN make -C kernel_modules_headers -j$(nproc) modules_prepare
 
-# RPI3
-RUN BALENA_MACHINE_NAME=raspberrypi3-64 ./build.sh build --device raspberrypi3-64 --os-version "$RPI3_VERSION" --src wireguard-linux-compat/src
+RUN make -C kernel_modules_headers M=$(pwd)/wireguard-linux-compat/src -j$(nproc)  
+RUN make -C $(pwd)/wireguard-tools/src -j$(nproc) && \  
+    mkdir -p $(pwd)/tools && \
+    make -C $(pwd)/wireguard-tools/src DESTDIR=$(pwd)/tools install
 
-# RPI4
-RUN BALENA_MACHINE_NAME=raspberrypi4-64 ./build.sh build --device raspberrypi4-64 --os-version "$RPI4_VERSION" --src wireguard-linux-compat/src
+FROM balenalib/amd64-debian 
+WORKDIR /wireguard  
+COPY --from=build /usr/src/app/wireguard-linux-compat/src/wireguard.ko .  
+COPY --from=build /usr/src/app/tools / 
+RUN install_packages kmod  
 
-# Note: This image runs on 4 and 3.
-FROM balenalib/raspberrypi4-64-debian
-WORKDIR /usr/src/app
-COPY --from=build /usr/src/app/output/ /usr/src/app/output/
-COPY ./run.sh .
+COPY client.sh ./  
+COPY entrypoint.sh /entrypoint.sh
 
-CMD ["./run.sh"]
+ENTRYPOINT [ "/entrypoint.sh" ]  
+CMD [ "/wireguard/client.sh" ]
